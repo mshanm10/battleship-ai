@@ -6,6 +6,6 @@ docker run -it --rm \
 -v /Users/muthu/dev/project/battleship-ai:/battleship-ai \
 battleship-ai bin/bash
 
-cd battleship-ai/src && python game.py
+# cd battleship-ai/src && python game.py
 
 
