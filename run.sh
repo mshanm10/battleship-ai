@@ -3,11 +3,12 @@
 docker build -t battleship-ai .
 
 docker run -it --rm \
+ -u $(id -u):$(id -g) \
 -v /Users/muthu/dev/project/battleship-ai:/battleship-ai \
 -p 8888:8888 \
-battleship-ai bin/bash
+battleship-ai bash
 
-# cd battleship-ai/src
+# cd /battleship-ai/src
 
 # R U N    T H E    G A M E  E N G I N E
 # python game.py
