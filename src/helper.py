@@ -3,6 +3,8 @@ from game import S, H, B
 
 
 def ship_sunk(grid, col, ind):
+    # LIMITATION: Ships should be separated by other ships by blank cell. ships cannot be
+    # placed in adjacent cols or rows. (just to make it work for now.)
     c = list(grid.columns).index(col)
     r = list(grid.index).index(ind)
     pos = []

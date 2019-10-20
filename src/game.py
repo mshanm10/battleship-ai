@@ -11,11 +11,51 @@ B = 0  # blank
 S = 2  # ship
 H = 1  # hit
 M = -1  # miss
-oc_grid = pd.DataFrame([[0, 0, 0, 0, S],
-                        [0, 0, 0, 0, S],
-                        [S, S, S, 0, S],
-                        [0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0]], columns=['A', 'B', 'C', 'D', 'E'], index=[1, 2, 3, 4, 5])
+
+SLEEP_SECS_BETWEEN_PLAYS = 0
+
+def as_grid(nparray):
+    return pd.DataFrame(nparray, columns=['A', 'B', 'C', 'D', 'E'], index=[1, 2, 3, 4, 5])
+
+
+oc_grids = [as_grid([[0, 0, 0, 0, S],
+                     [0, 0, 0, 0, S],
+                     [S, S, S, 0, 0],
+                     [0, 0, 0, 0, 0],
+                     [0, S, S, S, S]]),
+
+            as_grid([[0, S, 0, S, 0],
+                     [0, S, 0, S, 0],
+                     [0, S, 0, S, 0],
+                     [0, 0, 0, S, 0],
+                     [S, S, 0, 0, 0]]),
+
+            as_grid([[0, 0, 0, 0, 0],
+                     [S, S, S, S, 0],
+                     [0, 0, 0, 0, S],
+                     [0, 0, S, 0, S],
+                     [0, 0, S, 0, S]]),
+
+            as_grid([[0, 0, 0, 0, 0],
+                     [S, 0, S, S, S],
+                     [S, 0, 0, 0, 0],
+                     [S, 0, 0, S, S],
+                     [S, 0, 0, 0, 0]]),
+
+            as_grid([[S, 0, 0, 0, S],
+                     [S, 0, 0, 0, S],
+                     [S, 0, 0, 0, 0],
+                     [0, S, S, S, S],
+                     [0, 0, 0, 0, 0]]),
+
+            as_grid([[S, 0, S, 0, 0],
+                     [S, 0, S, 0, 0],
+                     [S, 0, 0, 0, 0],
+                     [0, S, S, S, S],
+                     [0, 0, 0, 0, 0]]),
+            ]
+
+random.shuffle(oc_grids)
 
 
 def real_user():
@@ -30,24 +70,18 @@ class RandomPlayer(object):
 
     def input(self):
         print(f"{player['name']}'s attack (eg:A1)): random player playing...(please wait)")
-        time.sleep(2)
+        time.sleep(SLEEP_SECS_BETWEEN_PLAYS)
         return ''.join(map(str, self.moves_available.pop()))
-
-
-# def random_player():
-#     if moves_available == None:
-#         moves_available =
-
 
 
 player_a = {
     "name": "Player A",
-    "ocean_grid": oc_grid.copy(),
+    "ocean_grid": oc_grids[0].copy(),
     "targeting_grid": tg_grid.copy()
 }
 player_b = {
     "name": "Player B",
-    "ocean_grid": oc_grid.copy(),
+    "ocean_grid": oc_grids[1].copy(),
     "targeting_grid": tg_grid.copy()
 }
 
@@ -78,16 +112,20 @@ def play(player, opponent, f_obj):
     else:
         status = MISS
         player['targeting_grid'][col][ind] = M
-    write_data(player['targeting_grid'], status, f_obj)
+    write_data(player['targeting_grid'], status, move, f_obj)
     if status == WON:
         print(f"{player['name']} Won  !!!!!!!!!!!!!!!!!!!")
         return False
     else:
         print(f"> > > > > > > > > > > > > {status}")
+        time.sleep(SLEEP_SECS_BETWEEN_PLAYS)
         return True
 
 
-def write_data(targeting_grid, status, f_obj):
+def write_data(targeting_grid, status, move, f_obj):
+    # move is added to previous line so, it will serve as target variable
+    if move != None:
+        f_obj.write(f",{move}\n")
     f_obj.write(f"{','.join(targeting_grid.to_numpy().flatten().astype(str))}, {status}")
 
 
@@ -98,10 +136,12 @@ if __name__ == '__main__':
     player['get_input'] = real_user
     opponent = player_b
     opponent['get_input'] = RandomPlayer(opponent).input
-    player_filename = f"{player['name']}-moves-status-{c_time}.txt"
-    opponent_filename = f"{opponent['name']}-moves-status-{c_time}.txt"
+    player_filename = f"{player['name']}-moves-status-{c_time}.csv"
+    opponent_filename = f"{opponent['name']}-moves-status-{c_time}.csv"
     with open(player_filename, 'w') as player_f, \
             open(opponent_filename, 'w') as opponent_f:
+        write_data(player['targeting_grid'], 'N/A', None, player_f)
+        write_data(opponent['targeting_grid'], 'N/A', None, opponent_f)
         while play(player, opponent, player_f):
             player, opponent = opponent, player
             player_f, opponent_f = opponent_f, player_f
