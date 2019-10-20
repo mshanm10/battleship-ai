@@ -5,6 +5,7 @@ import datetime
 import itertools
 import random
 import time
+from joblib import load
 
 tg_grid = pd.DataFrame(np.zeros((5, 5), dtype=int), columns=['A', 'B', 'C', 'D', 'E'], index=[1, 2, 3, 4, 5])
 B = 0  # blank
@@ -74,6 +75,39 @@ class RandomPlayer(object):
         return ''.join(map(str, self.moves_available.pop()))
 
 
+class XGBoostAIPlayer(object):
+
+    def __init__(self, player, tg_grid):
+        self.col_clf = load('clf-col-xgboost-Sun Oct 20 19:10:13 2019.joblib')
+        self.row_clf = load('clf-row-xgboost-Sun Oct 20 19:21:59 2019.joblib')
+        self.update_result(tg_grid, 'N/A')
+
+    def input(self):
+        print(f"{player['name']}'s attack (eg:A1)): XGBoost AI player playing...(please wait)")
+        time.sleep(SLEEP_SECS_BETWEEN_PLAYS)
+        col_pred = self.col_clf.predict(self.X_col)[0]
+        # print(f"-----X_col------> {self.X_col} ---col_pred---> {col_pred}")
+        grid_col_values = np.array(['a', 'b', 'c', 'd', 'e'])
+        grid_col_names = ['attack_col_a', 'attack_col_b', 'attack_col_c', 'attack_col_d', 'attack_col_e']
+        grid_cols_df = pd.DataFrame(np.array([1 if c else 0 for c in grid_col_values == col_pred]).reshape(1, -1), columns=grid_col_names)
+        X_row = pd.concat([self.X_col, grid_cols_df], axis=1)
+        row_pred = self.row_clf.predict(X_row)[0]
+        # print(f"-----X_row------> {X_row} ---row_pred---> {row_pred}")
+        # move = f'{col_pred}{row_pred}'
+        # print(f"move------> {move}")
+        return f'{col_pred}{row_pred}'.upper()
+
+    def update_result(self, tg_grid, status):
+        cols = [f'cor_{i}' for i in range(25)]
+        df = pd.DataFrame(tg_grid.to_numpy().flatten().reshape((1, -1)), columns=cols)
+        # df['status'] = status
+        sts = np.array([HIT, MISS, 'N/A', SHIP_SUNK])
+        # sts = np.array(['Hit', 'Miss', 'N/A', 'Ship Sunk'])
+        sts_cols = ['status_hit', 'status_miss', 'status_na', 'status_shipsunk']
+        sts_df = pd.DataFrame(np.array([1 if c else 0 for c in sts == status]).reshape(1, -1), columns=sts_cols)
+        self.X_col = pd.concat([df, sts_df], axis=1)
+
+
 player_a = {
     "name": "Player A",
     "ocean_grid": oc_grids[0].copy(),
@@ -94,7 +128,9 @@ MISS = 'Miss'
 def play(player, opponent, f_obj):
     print(f"--------{player['name']}'s Targeting Grid---------")
     print(f"{player['targeting_grid']}")
-    move = player['get_input']()
+    move = ''
+    while move == '':
+        move = player['get_input']()
     col = move[0]
     ind = int(move[1:])
     val = opponent['ocean_grid'][col][ind]
@@ -117,6 +153,8 @@ def play(player, opponent, f_obj):
         print(f"{player['name']} Won  !!!!!!!!!!!!!!!!!!!")
         return False
     else:
+        if 'update_result' in player:
+            player['update_result'](player['targeting_grid'], status)
         print(f"> > > > > > > > > > > > > {status}")
         time.sleep(SLEEP_SECS_BETWEEN_PLAYS)
         return True
@@ -132,10 +170,16 @@ def write_data(targeting_grid, status, move, f_obj):
 if __name__ == '__main__':
     print("Battleship Game Started.")
     c_time = datetime.datetime.now().ctime()
+
     player = player_a
-    player['get_input'] = real_user
+    # player['get_input'] = real_user
+    xgboost_ai_player = XGBoostAIPlayer(player, player['targeting_grid'])
+    player['get_input'] = xgboost_ai_player.input
+    player['update_result'] = xgboost_ai_player.update_result
+
     opponent = player_b
     opponent['get_input'] = RandomPlayer(opponent).input
+
     player_filename = f"{player['name']}-moves-status-{c_time}.csv"
     opponent_filename = f"{opponent['name']}-moves-status-{c_time}.csv"
     with open(player_filename, 'w') as player_f, \
