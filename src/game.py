@@ -15,6 +15,7 @@ M = -1  # miss
 
 SLEEP_SECS_BETWEEN_PLAYS = 0
 
+
 def as_grid(nparray):
     return pd.DataFrame(nparray, columns=['A', 'B', 'C', 'D', 'E'], index=[1, 2, 3, 4, 5])
 
@@ -78,34 +79,57 @@ class RandomPlayer(object):
 class XGBoostAIPlayer(object):
 
     def __init__(self, player, tg_grid):
-        self.col_clf = load('clf-col-xgboost-Sun Oct 20 19:10:13 2019.joblib')
-        self.row_clf = load('clf-row-xgboost-Sun Oct 20 19:21:59 2019.joblib')
-        self.update_result(tg_grid, 'N/A')
+        self.col_clf = load('clf-col-xgboost-Sun Oct 20 23:47:50 2019.joblib')
+        self.row_clf = load('clf-row-xgboost-Sun Oct 20 23:48:55 2019.joblib')
+        self.prev_attack_dum = None
+        self.prev_attack('a1')
+        self.update_result(tg_grid, MISS)
+
+    def prev_attack(self, attack):
+        attack = attack.lower()
+        col_dum = self.dummies(attack[0], ['a', 'b', 'c', 'd', 'e'],
+                               ['prev_attack_col_a', 'prev_attack_col_b', 'prev_attack_col_c', 'prev_attack_col_d',
+                                'prev_attack_col_e'])
+        row_dum = self.dummies(attack[1], ['1', '2', '3', '4', '5'],
+                               ['prev_attack_row_1', 'prev_attack_row_2', 'prev_attack_row_3', 'prev_attack_row_4',
+                                'prev_attack_row_5'])
+        self.prev_attack_dum = pd.concat([col_dum, row_dum], axis=1)
 
     def input(self):
         print(f"{player['name']}'s attack (eg:A1)): XGBoost AI player playing...(please wait)")
         time.sleep(SLEEP_SECS_BETWEEN_PLAYS)
         col_pred = self.col_clf.predict(self.X_col)[0]
         # print(f"-----X_col------> {self.X_col} ---col_pred---> {col_pred}")
-        grid_col_values = np.array(['a', 'b', 'c', 'd', 'e'])
-        grid_col_names = ['attack_col_a', 'attack_col_b', 'attack_col_c', 'attack_col_d', 'attack_col_e']
-        grid_cols_df = pd.DataFrame(np.array([1 if c else 0 for c in grid_col_values == col_pred]).reshape(1, -1), columns=grid_col_names)
-        X_row = pd.concat([self.X_col, grid_cols_df], axis=1)
+        # grid_col_values = np.array(['a', 'b', 'c', 'd', 'e'])
+        # grid_col_names = ['attack_col_a', 'attack_col_b', 'attack_col_c', 'attack_col_d', 'attack_col_e']
+        # grid_cols_df = pd.DataFrame(np.array([1 if c else 0 for c in grid_col_values == col_pred]).reshape(1, -1), columns=grid_col_names)
+        dum_df = self.dummies(col_pred, ['a', 'b', 'c', 'd', 'e'],
+                              ['attack_col_a', 'attack_col_b', 'attack_col_c', 'attack_col_d', 'attack_col_e'])
+        X_row = pd.concat([self.X_col, dum_df], axis=1)
         row_pred = self.row_clf.predict(X_row)[0]
         # print(f"-----X_row------> {X_row} ---row_pred---> {row_pred}")
-        # move = f'{col_pred}{row_pred}'
+        move = f'{col_pred}{row_pred}'.upper()
+        self.prev_attack(move)
         # print(f"move------> {move}")
-        return f'{col_pred}{row_pred}'.upper()
+        return move
+
+    def dummies(self, curr_val, values, columns):
+        col_values = np.array(values)
+        col_names = columns
+        return pd.DataFrame(np.array([1 if c else 0 for c in col_values == curr_val]).reshape(1, -1), columns=col_names)
 
     def update_result(self, tg_grid, status):
         cols = [f'cor_{i}' for i in range(25)]
         df = pd.DataFrame(tg_grid.to_numpy().flatten().reshape((1, -1)), columns=cols)
         # df['status'] = status
-        sts = np.array([HIT, MISS, 'N/A', SHIP_SUNK])
+        # sts = np.array([HIT, MISS, 'N/A', SHIP_SUNK])
         # sts = np.array(['Hit', 'Miss', 'N/A', 'Ship Sunk'])
-        sts_cols = ['status_hit', 'status_miss', 'status_na', 'status_shipsunk']
-        sts_df = pd.DataFrame(np.array([1 if c else 0 for c in sts == status]).reshape(1, -1), columns=sts_cols)
-        self.X_col = pd.concat([df, sts_df], axis=1)
+        # sts_cols = ['status_hit', 'status_miss', 'status_na', 'status_shipsunk']
+        # sts_df = pd.DataFrame(np.array([1 if c else 0 for c in sts == status]).reshape(1, -1), columns=sts_cols)
+        sts_df = self.dummies(status, [HIT, SHIP_SUNK, MISS],
+                              ['status_hit', 'status_miss', 'status_shipsunk'])
+        self.X_col = pd.concat([df, sts_df, self.prev_attack_dum], axis=1)
+        print(self.X_col.columns)
 
 
 player_a = {
