@@ -34,3 +34,4 @@ when playing game was poor.
 Next Steps:
 1. Wanted to try CNN model or reinforcement learning algorithm
 2. Try one hot encoding for each targeting grid position
+3. Identify new features so it will predict only blank co-ordinates
