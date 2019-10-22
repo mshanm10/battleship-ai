@@ -8,6 +8,8 @@ docker run -it --rm \
 -p 8888:8888 \
 battleship-ai bash
 
+# once the docker bash prompt appears
+# - - - - - - - - - - - - - - - - - -
 # cd /battleship-ai/src
 
 # R U N    T H E    G A M E  E N G I N E

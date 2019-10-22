@@ -19,7 +19,9 @@ SLEEP_SECS_BETWEEN_PLAYS = 0
 def as_grid(nparray):
     return pd.DataFrame(nparray, columns=['A', 'B', 'C', 'D', 'E'], index=[1, 2, 3, 4, 5])
 
-
+'''
+Ocean grid is choosen randomly one for each player.
+'''
 oc_grids = [as_grid([[0, 0, 0, 0, S],
                      [0, 0, 0, 0, S],
                      [S, S, S, 0, 0],
@@ -99,18 +101,12 @@ class XGBoostAIPlayer(object):
         print(f"{player['name']}'s attack (eg:A1)): XGBoost AI player playing...(please wait)")
         time.sleep(SLEEP_SECS_BETWEEN_PLAYS)
         col_pred = self.col_clf.predict(self.X_col)[0]
-        # print(f"-----X_col------> {self.X_col} ---col_pred---> {col_pred}")
-        # grid_col_values = np.array(['a', 'b', 'c', 'd', 'e'])
-        # grid_col_names = ['attack_col_a', 'attack_col_b', 'attack_col_c', 'attack_col_d', 'attack_col_e']
-        # grid_cols_df = pd.DataFrame(np.array([1 if c else 0 for c in grid_col_values == col_pred]).reshape(1, -1), columns=grid_col_names)
         dum_df = self.dummies(col_pred, ['a', 'b', 'c', 'd', 'e'],
                               ['attack_col_a', 'attack_col_b', 'attack_col_c', 'attack_col_d', 'attack_col_e'])
         X_row = pd.concat([self.X_col, dum_df], axis=1)
         row_pred = self.row_clf.predict(X_row)[0]
-        # print(f"-----X_row------> {X_row} ---row_pred---> {row_pred}")
         move = f'{col_pred}{row_pred}'.upper()
         self.prev_attack(move)
-        # print(f"move------> {move}")
         return move
 
     def dummies(self, curr_val, values, columns):
@@ -121,15 +117,9 @@ class XGBoostAIPlayer(object):
     def update_result(self, tg_grid, status):
         cols = [f'cor_{i}' for i in range(25)]
         df = pd.DataFrame(tg_grid.to_numpy().flatten().reshape((1, -1)), columns=cols)
-        # df['status'] = status
-        # sts = np.array([HIT, MISS, 'N/A', SHIP_SUNK])
-        # sts = np.array(['Hit', 'Miss', 'N/A', 'Ship Sunk'])
-        # sts_cols = ['status_hit', 'status_miss', 'status_na', 'status_shipsunk']
-        # sts_df = pd.DataFrame(np.array([1 if c else 0 for c in sts == status]).reshape(1, -1), columns=sts_cols)
         sts_df = self.dummies(status, [HIT, SHIP_SUNK, MISS],
                               ['status_hit', 'status_miss', 'status_shipsunk'])
         self.X_col = pd.concat([df, sts_df, self.prev_attack_dum], axis=1)
-        print(self.X_col.columns)
 
 
 player_a = {
@@ -196,7 +186,8 @@ if __name__ == '__main__':
     c_time = datetime.datetime.now().ctime()
 
     player = player_a
-    # player['get_input'] = real_user
+    # player['get_input'] = real_user  # Uncomment this to play manually
+    # comment below 3 lines to play manually
     xgboost_ai_player = XGBoostAIPlayer(player, player['targeting_grid'])
     player['get_input'] = xgboost_ai_player.input
     player['update_result'] = xgboost_ai_player.update_result
